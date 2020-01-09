@@ -1,0 +1,75 @@
+version 2.1
+
+description: "Common CircleCI tasks for the Crystal programming language."
+
+executors:
+  default:
+    description: "The official Crystal Docker image"
+    parameters:
+      version:
+        description: "crystallang/crystal Docker image version tag. Valid values: latest, nightly or M.m.p. See https://hub.docker.com/r/crystallang/crystal/"
+        type: string
+        default: latest
+    docker:
+      - image: crystallang/crystal:<< parameters.version >>
+
+commands:
+  cache_restore:
+    steps:
+      - restore_cache:
+          keys:
+            - shards-cache-{{ .Branch }}-{{ checksum "shard.yml" }}
+            - shards-cache-{{ .Branch }}
+            - shards-cache
+      - restore_cache:
+          keys:
+            - shards-cache-{{ .Branch }}-{{ checksum "shard.lock" }}
+            - shards-cache-{{ .Branch }}
+            - shards-cache
+  cache_save:
+    steps:
+      - save_cache:
+          key: shards-cache-{{ .Branch }}-{{ checksum "shard.lock" }}
+          paths:
+            - ~/.cache/shards
+      - save_cache:
+          key: shards-cache-{{ .Branch }}-{{ checksum "shard.yml" }}
+          paths:
+            - ~/.cache/shards
+  shards_install:
+    description: "Install Shards dependencies."
+    steps:
+      - run:
+          name: Install dependencies.
+          command: shards install
+  test:
+    description: "Run tests with given spec options."
+    parameters:
+      spec_options:
+        type: string
+        default: ""
+    steps:
+      - run:
+          name: Run tests
+          command: crystal spec << parameters.spec_options >>
+
+jobs:
+  test:
+    description: "Run tests with specified Crystal version"
+    parameters:
+      version:
+        type: string
+        default: latest
+      spec_options:
+        type: string
+        default: ""
+    executor:
+      name: default
+      version: << parameters.version >>
+    steps:
+      - checkout
+      - cache_restore
+      - shards_install
+      - cache_save
+      - test:
+          spec_options: << parameters.spec_options >>
