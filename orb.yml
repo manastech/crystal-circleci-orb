@@ -66,6 +66,12 @@ jobs:
       spec_options:
         type: string
         default: ""
+      junit:
+        type: boolean
+        default: true
+      junit_output:
+        type: string
+        default: ~/test-results
       executor:
         description: The executor to use for this job.
         type: executor
@@ -77,5 +83,20 @@ jobs:
       - cache_restore
       - shards_install
       - cache_save
-      - test:
-          spec_options: << parameters.spec_options >>
+      - when:
+          condition: << parameters.junit >>
+          steps:
+            - test:
+                spec_options: << parameters.spec_options >> --junit_output << parameters.junit_output >>
+      - unless:
+          condition: << parameters.junit >>
+          steps:
+            - test:
+                spec_options: << parameters.spec_options >>
+      - when:
+          condition: << parameters.junit >>
+          steps:
+            - store_test_results:
+                path: << parameters.junit_output >>
+            - store_artifacts:
+                path: << parameters.junit_output >>
