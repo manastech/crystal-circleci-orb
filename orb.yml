@@ -52,6 +52,12 @@ commands:
       - run:
           name: Run tests
           command: crystal spec << parameters.spec_options >>
+  version:
+    description: "Show Crystal and Shards version."
+    steps:
+      - run: |
+          crystal --version
+          shards --version
 
 jobs:
   test:
@@ -67,6 +73,7 @@ jobs:
       name: default
       version: << parameters.version >>
     steps:
+      - version
       - checkout
       - cache_restore
       - shards_install
