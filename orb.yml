@@ -3,7 +3,7 @@ version: 2.1
 description: "Common CircleCI tasks for the Crystal programming language."
 
 executors:
-  default:
+  crystal:
     description: "The official Crystal Docker image"
     parameters:
       version:
@@ -63,15 +63,14 @@ jobs:
   test:
     description: "Run tests with specified Crystal version"
     parameters:
-      version:
-        type: string
-        default: latest
       spec_options:
         type: string
         default: ""
-    executor:
-      name: default
-      version: << parameters.version >>
+      executor:
+        description: The executor to use for this job.
+        type: executor
+        default: crystal
+    executor: << parameters.executor >>
     steps:
       - version
       - checkout
