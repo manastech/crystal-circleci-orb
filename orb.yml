@@ -122,11 +122,26 @@ jobs:
         description: The executor to use for this job.
         type: executor
         default: docker
+      cache-key:
+        default: shard.yml
+        description: File to use as a shards cache checksum
+        type: string
+      cache-version:
+        default: v1
+        description: Cache version; increment this for a fresh cache
+        type: string
+      include-branch-in-cache-key:
+          default: true
+          description: If true, includes current branch name in cache key
+          type: boolean
     executor: << parameters.executor >>
     steps:
       - version
       - checkout
       - with-shards-cache:
+          cache-key: << parameters.cache-key >>
+          cache-version: << parameters.cache-version >>
+          include-branch-in-cache-key: << parameters.include-branch-in-cache-key >>
           steps:
             - shards-install
       - spec:
