@@ -1,102 +1,211 @@
 version: 2.1
 
-description: "Common CircleCI tasks for the Crystal programming language."
+description: |
+  Common CircleCI tasks for the Crystal programming language.
 
 executors:
-  crystal:
-    description: "The official Crystal Docker image"
+  docker:
+    description: |
+      Use the official Crystal Docker image as executor.
     parameters:
-      version:
-        description: "crystallang/crystal Docker image version tag. Valid values: latest, nightly or M.m.p. See https://hub.docker.com/r/crystallang/crystal/"
+      tag:
+        description: "crystallang/crystal Docker image tag. Valid values: latest, nightly or M.m.p. See https://hub.docker.com/r/crystallang/crystal/"
         type: string
         default: latest
     docker:
-      - image: crystallang/crystal:<< parameters.version >>
+      - image: crystallang/crystal:<< parameters.tag >>
 
 commands:
-  cache_restore:
-    steps:
-      - restore_cache:
-          keys:
-            - shards-cache-{{ .Branch }}-{{ checksum "shard.yml" }}
-            - shards-cache-{{ .Branch }}
-            - shards-cache
-      - restore_cache:
-          keys:
-            - shards-cache-{{ .Branch }}-{{ checksum "shard.lock" }}
-            - shards-cache-{{ .Branch }}
-            - shards-cache
-  cache_save:
-    steps:
-      - save_cache:
-          key: shards-cache-{{ .Branch }}-{{ checksum "shard.lock" }}
-          paths:
-            - ~/.cache/shards
-      - save_cache:
-          key: shards-cache-{{ .Branch }}-{{ checksum "shard.yml" }}
-          paths:
-            - ~/.cache/shards
-  shards_install:
-    description: "Install Shards dependencies."
-    steps:
-      - run:
-          name: Install dependencies.
-          command: shards install
-  test:
-    description: "Run tests with given spec options."
+  with-shards-cache:
+    description: |
+      Run a set of steps with shards cache enabled.
     parameters:
-      spec_options:
+      cache-key:
+        default: shard.yml
+        description: File to use as a shards cache checksum
         type: string
-        default: ""
+      cache-version:
+        default: v1
+        description: Cache version; increment this for a fresh cache
+        type: string
+      include-branch-in-cache-key:
+          default: true
+          description: If true, includes current branch name in cache key
+          type: boolean
+      dir:
+        default: ~/.cache/shards
+        description: Path to your shards cache
+        type: string
+      steps:
+        type: steps
+    steps:
+      - restore_cache:
+          keys:
+            - shards-cache-<<parameters.cache-version>>-<<#parameters.include-branch-in-cache-key>>{{ .Branch }}-<</parameters.include-branch-in-cache-key>>{{ checksum "<<parameters.cache-key>>" }}
+            - shards-cache-<<parameters.cache-version>>-<<#parameters.include-branch-in-cache-key>>{{ .Branch }}-<</parameters.include-branch-in-cache-key>>
+            - shards-cache-<<parameters.cache-version>>
+      - steps: <<parameters.steps>>
+      - save_cache:
+          key: shards-cache-<<parameters.cache-version>>-<<#parameters.include-branch-in-cache-key>>{{ .Branch }}-<</parameters.include-branch-in-cache-key>>{{ checksum "<<parameters.cache-key>>" }}
+          paths:
+            - <<parameters.dir>>
+
+  shards-install:
+    description: |
+      Install Shards dependencies.
     steps:
       - run:
-          name: Run tests
-          command: crystal spec << parameters.spec_options >>
-  version:
-    description: "Show Crystal and Shards version."
-    steps:
-      - run: |
-          crystal --version
-          shards --version
+          name: Install dependencies
+          command: shards install
 
-jobs:
-  test:
-    description: "Run tests with specified Crystal version"
+  spec:
+    description: |
+      Run crystal spec with given spec options.
     parameters:
-      spec_options:
+      spec-options:
         type: string
         default: ""
       junit:
         type: boolean
         default: true
-      junit_output:
+      junit-output:
         type: string
-        default: ~/test-results
-      executor:
-        description: The executor to use for this job.
-        type: executor
-        default: crystal
-    executor: << parameters.executor >>
+        default: ~/test-results/crystal-spec
     steps:
-      - version
-      - checkout
-      - cache_restore
-      - shards_install
-      - cache_save
-      - when:
-          condition: << parameters.junit >>
-          steps:
-            - test:
-                spec_options: << parameters.spec_options >> --junit_output << parameters.junit_output >>
-      - unless:
-          condition: << parameters.junit >>
-          steps:
-            - test:
-                spec_options: << parameters.spec_options >>
+      - run:
+          name: Run specs
+          command: crystal spec << parameters.spec-options >><<#parameters.junit>> --junit_output << parameters.junit-output >><</parameters.junit>>
       - when:
           condition: << parameters.junit >>
           steps:
             - store_test_results:
-                path: << parameters.junit_output >>
+                path: << parameters.junit-output >>
             - store_artifacts:
-                path: << parameters.junit_output >>
+                path: << parameters.junit-output >>
+
+  format-check:
+    description: |
+      Check the format of the source code.
+    steps:
+      - run:
+          name: Check format
+          command: crystal tool format --check
+
+  version:
+    description: |
+      Show Crystal and Shards version.
+    steps:
+      - run:
+          name: Crystal and Shards version
+          command: |
+            crystal --version
+            shards --version
+
+jobs:
+  test:
+    description: |
+      Download dependencies, run specs and check format with specified Crystal version.
+    parameters:
+      spec-options:
+        type: string
+        default: ""
+      junit:
+        type: boolean
+        default: true
+      junit-output:
+        type: string
+        default: ~/test-results/crystal-spec
+      format-check:
+        type: boolean
+        default: true
+      executor:
+        description: The executor to use for this job.
+        type: executor
+        default: docker
+    executor: << parameters.executor >>
+    steps:
+      - version
+      - checkout
+      - with-shards-cache:
+          steps:
+            - shards-install
+      - spec:
+          spec-options: << parameters.spec-options >>
+          junit: << parameters.junit >>
+          junit-output: << parameters.junit-output >>
+      - when:
+          condition: << parameters.format-check >>
+          steps:
+            - format-check
+
+examples:
+  latest:
+    description: |
+      Example for testing using latest Crystal release.
+    usage:
+      workflows:
+        version: 2
+        build:
+          jobs:
+            - crystal/test
+      orbs:
+        crystal: manastech/crystal@0.3
+      version: 2.1
+
+  nightly:
+    description: |
+      Example for testing using nightly Crystal release.
+    usage:
+      workflows:
+        version: 2
+        build:
+          jobs:
+            - crystal/test:
+                name: test-on-nightly
+                executor:
+                  name: crystal/docker
+                  tag: nightly
+      orbs:
+        crystal: manastech/crystal@0.3
+      version: 2.1
+
+  binary-dependencies:
+    description: |
+      Adding binary dependencies via apt.
+    usage:
+      workflows:
+        version: 2
+        build:
+          jobs:
+            - crystal/test:
+                pre-steps:
+                  - run: apt-get update && apt-get install -y libsqlite3-dev
+      orbs:
+        crystal: manastech/crystal@0.3
+      version: 2.1
+
+  external-services:
+    description: |
+      Use docker to add external services. Define a custom executor but keep using the crystal/test job.
+    usage:
+      executors:
+        crystal_mysql:
+          docker:
+            - image: crystallang/crystal:latest
+              environment:
+                DATABASE_URL: mysql://root@localhost/db
+            - image: mysql:5.7
+              environment:
+                MYSQL_DATABASE: db
+                MYSQL_ALLOW_EMPTY_PASSWORD: yes
+      workflows:
+        version: 2
+        build:
+          jobs:
+            - crystal/test:
+                executor: crystal_mysql
+                pre-steps:
+                  - run: sleep 5 # wait for service to start (check dockerize)
+      orbs:
+        crystal: manastech/crystal@0.3
+      version: 2.1
