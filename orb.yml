@@ -2,9 +2,13 @@ version: 2.1
 
 description: |
   Common CircleCI tasks for the Crystal programming language.
+  
+display:
+  home_url: https://crystal-lang.org/
+  source_url: https://github.com/manastech/crystal-circleci-orb
 
 executors:
-  docker:
+  default:
     description: |
       Use the official Crystal Docker image as executor.
     parameters:
@@ -121,7 +125,7 @@ jobs:
       executor:
         description: The executor to use for this job.
         type: executor
-        default: docker
+        default: default
       cache-key:
         default: shard.yml
         description: File to use as a shards cache checksum
@@ -164,7 +168,7 @@ examples:
           jobs:
             - crystal/test
       orbs:
-        crystal: manastech/crystal@0.3
+        crystal: manastech/crystal@x.y
       version: 2.1
 
   nightly:
@@ -181,7 +185,7 @@ examples:
                   name: crystal/docker
                   tag: nightly
       orbs:
-        crystal: manastech/crystal@0.3
+        crystal: manastech/crystal@x.y
       version: 2.1
 
   binary-dependencies:
@@ -196,7 +200,7 @@ examples:
                 pre-steps:
                   - run: apt-get update && apt-get install -y libsqlite3-dev
       orbs:
-        crystal: manastech/crystal@0.3
+        crystal: manastech/crystal@x.y
       version: 2.1
 
   external-services:
@@ -224,5 +228,5 @@ examples:
                       name: Waiting for service to start (check dockerize)
                       command: sleep 5
       orbs:
-        crystal: manastech/crystal@0.3
+        crystal: manastech/crystal@x.y
       version: 2.1
