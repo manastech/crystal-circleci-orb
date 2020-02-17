@@ -2,7 +2,7 @@ version: 2.1
 
 description: |
   Common CircleCI tasks for the Crystal programming language.
-  
+
 display:
   home_url: https://crystal-lang.org/
   source_url: https://github.com/manastech/crystal-circleci-orb
@@ -13,7 +13,9 @@ executors:
       Use the official Crystal Docker image as executor.
     parameters:
       tag:
-        description: "crystallang/crystal Docker image tag. Valid values: latest, nightly or M.m.p. See https://hub.docker.com/r/crystallang/crystal/"
+        description: |
+          crystallang/crystal Docker image tag. Valid values: latest, nightly or M.m.p.
+          See https://hub.docker.com/r/crystallang/crystal/
         type: string
         default: latest
     docker:
@@ -25,22 +27,23 @@ commands:
       Run a set of steps with shards cache enabled.
     parameters:
       cache-key:
-        default: shard.yml
         description: File to use as a shards cache checksum
+        default: shard.yml
         type: string
       cache-version:
-        default: v1
         description: Cache version; increment this for a fresh cache
+        default: v1
         type: string
       include-branch-in-cache-key:
-          default: true
-          description: If true, includes current branch name in cache key
-          type: boolean
+        description: If true, includes current branch name in cache key
+        default: true
+        type: boolean
       dir:
-        default: ~/.cache/shards
         description: Path to your shards cache
+        default: ~/.cache/shards
         type: string
       steps:
+        description: Input any custom steps to run with your shards cache
         type: steps
     steps:
       - restore_cache:
@@ -67,12 +70,15 @@ commands:
       Run crystal spec with given spec options.
     parameters:
       spec-options:
+        description: Additional options to crystal spec like --tag fast
         type: string
         default: ""
       junit:
+        description: Store crystal spec output in JUnit format and use it as CircleCI test results
         type: boolean
         default: true
       junit-output:
+        description: JUnit output location
         type: string
         default: ~/test-results/crystal-spec
     steps:
@@ -111,33 +117,37 @@ jobs:
       Download dependencies, run specs and check format with specified Crystal version.
     parameters:
       spec-options:
+        description: Additional options to crystal spec like --tag fast
         type: string
         default: ""
       junit:
+        description: Store crystal spec output in JUnit format and use it as CircleCI test results
         type: boolean
         default: true
       junit-output:
+        description: JUnit output location
         type: string
         default: ~/test-results/crystal-spec
       format-check:
+        description: Check the format of the source code
         type: boolean
         default: true
       executor:
-        description: The executor to use for this job.
+        description: The executor to use for this job
         type: executor
         default: default
       cache-key:
-        default: shard.yml
         description: File to use as a shards cache checksum
+        default: shard.yml
         type: string
       cache-version:
-        default: v1
         description: Cache version; increment this for a fresh cache
+        default: v1
         type: string
       include-branch-in-cache-key:
-          default: true
-          description: If true, includes current branch name in cache key
-          type: boolean
+        description: If true, includes current branch name in cache key
+        default: true
+        type: boolean
     executor: << parameters.executor >>
     steps:
       - version
@@ -182,7 +192,7 @@ examples:
             - crystal/test:
                 name: test-on-nightly
                 executor:
-                  name: crystal/docker
+                  name: crystal/default
                   tag: nightly
       orbs:
         crystal: manastech/crystal@x.y
